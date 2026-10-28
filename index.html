@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El Colorado en realidad mixta</title>
+<style>
+:root {
+  --rio: #b5532f;
+  --rio-osc: #8a3a1f;
+  --tierra: #d9a066;
+  --algodon: #fffdf5;
+  --hoja: #3f7d3a;
+  --cielo: #8fd0ee;
+  --tinta: #2a1a12;
+  --acento: #b5381f;
+  --oro: #f2b134;
+  --papel: rgba(255, 250, 238, 0.95);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #1c120d; color: var(--tinta);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+#escena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.oculto { display: none !important; }
+b, strong { font-weight: 800; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; top: 0; left: 0; right: 0; padding: 1.2vh 2vw; display: flex; gap: 1.6vw; align-items: stretch; pointer-events: none; }
+.stat { background: var(--papel); border-radius: 14px; padding: 0.6vh 1.4vw; min-width: 9vw; text-align: center; box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+.stat span { display: block; font-size: clamp(.8rem, 1.3vw, 1.5rem); letter-spacing: .04em; text-transform: uppercase; color: var(--rio-osc); font-weight: 700; }
+.stat b { font-size: clamp(1.6rem, 3.2vw, 3.8rem); line-height: 1.05; }
+#ruta { flex: 1; align-self: center; background: var(--papel); border-radius: 14px; padding: 1.2vh 1.6vw; box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+#rutaBarra { position: relative; height: 1.1vh; min-height: 8px; background: #e4d3b6; border-radius: 99px; margin: 1.4vh 0.8vw; }
+#rutaBarra .punto { position: absolute; top: 50%; width: 2.2vh; height: 2.2vh; min-width: 16px; min-height: 16px; transform: translate(-50%, -50%); border-radius: 50%; background: #fff; border: 3px solid var(--rio); }
+#rutaBarra .punto.visto { background: var(--hoja); border-color: var(--hoja); }
+#rutaMarca { position: absolute; top: 50%; width: 3.2vh; height: 3.2vh; min-width: 22px; min-height: 22px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--oro); border: 4px solid var(--tinta); transition: left .15s linear; }
+#rutaTxt { text-align: center; font-weight: 800; font-size: clamp(.9rem, 1.5vw, 1.8rem); color: var(--rio-osc); }
+
+#aviso { position: fixed; left: 50%; bottom: 3vh; transform: translateX(-50%); max-width: 90vw; text-align: center;
+  background: rgba(42, 26, 18, .88); color: #fff; padding: 1.2vh 2.2vw; border-radius: 18px;
+  font-size: clamp(1.2rem, 2.4vw, 3rem); font-weight: 800; }
+#aviso.alerta { background: var(--acento); }
+
+/* ---------- Pantallas ---------- */
+.pantalla { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 2vh 3vw; overflow: auto;
+  background: linear-gradient(180deg, rgba(42,26,18,.55), rgba(42,26,18,.78)); }
+.panel { margin: auto; width: min(1100px, 96vw); background: var(--papel); border-radius: 28px; padding: 3.2vh 3vw; box-shadow: 0 10px 0 rgba(0,0,0,.25); }
+.panel h1 { margin: 0 0 .4rem; font-size: clamp(2rem, 4.6vw, 4.6rem); line-height: 1.05; color: var(--rio-osc); }
+.panel h2 { margin: 0 0 .6rem; font-size: clamp(1.6rem, 3.2vw, 3.4rem); color: var(--rio-osc); }
+.panel p, .panel li { font-size: clamp(1.05rem, 1.7vw, 1.9rem); line-height: 1.35; }
+.logo { display: flex; align-items: center; gap: 1.2vw; margin-bottom: 1.4vh; }
+.logo svg { width: clamp(52px, 6vw, 96px); height: auto; flex: none; }
+.logo small { display: block; font-size: clamp(.9rem, 1.4vw, 1.5rem); color: #6b4a2b; font-weight: 700; }
+.privacidad { background: #fff3d6; border: 3px solid var(--oro); border-radius: 18px; padding: 1.4vh 1.6vw; margin: 1.2vh 0; }
+.privacidad ul { margin: .3rem 0 0; padding-left: 1.4em; }
+.privacidad li { font-size: clamp(.95rem, 1.45vw, 1.6rem); margin: .15em 0; }
+.fila { display: flex; gap: 1.2vw; flex-wrap: wrap; margin: 1.2vh 0; align-items: stretch; }
+.modo { flex: 1 1 14em; border: 4px solid #d9c9a8; border-radius: 18px; padding: 1vh 1.2vw; cursor: pointer; background: #fff; }
+.modo input { transform: scale(1.5); margin-right: .6em; }
+.modo.sel { border-color: var(--hoja); background: #eef7e8; }
+.modo b { font-size: clamp(1.1rem, 1.8vw, 2rem); }
+.modo small { display: block; font-size: clamp(.85rem, 1.25vw, 1.4rem); color: #5b4636; margin-top: .2em; }
+label.chk { display: flex; align-items: center; gap: .7em; font-size: clamp(1.05rem, 1.7vw, 1.9rem); font-weight: 800; cursor: pointer; }
+label.chk input { transform: scale(1.7); }
+.peso { font-size: clamp(1rem, 1.5vw, 1.7rem); }
+.peso input { width: 4.2em; font-size: inherit; padding: .15em .3em; border-radius: 10px; border: 3px solid #d9c9a8; }
+button.grande { font: inherit; font-weight: 800; font-size: clamp(1.3rem, 2.4vw, 2.8rem); padding: .6em 1.6em; border: 0; border-radius: 18px;
+  background: var(--hoja); color: #fff; cursor: pointer; box-shadow: 0 6px 0 #27541f; }
+button.grande:disabled { background: #aaa; box-shadow: 0 6px 0 #777; cursor: not-allowed; }
+button.chico { font: inherit; font-weight: 700; font-size: clamp(.9rem, 1.3vw, 1.4rem); padding: .4em 1em; border: 3px solid var(--rio); border-radius: 12px; background: #fff; color: var(--rio-osc); cursor: pointer; }
+.pie { margin-top: 1.2vh; font-size: clamp(.8rem, 1.1vw, 1.2rem); color: #6b4a2b; }
+
+/* ---------- Calibración ---------- */
+#calib { background: rgba(42,26,18,.35); }
+#calib .panel { text-align: center; width: min(900px, 94vw); }
+#cuenta { font-size: clamp(5rem, 16vw, 14rem); line-height: 1; font-weight: 900; color: var(--acento); margin: 0; }
+.anillo { height: 2vh; min-height: 14px; background: #e4d3b6; border-radius: 99px; overflow: hidden; margin: 1.4vh 0; }
+.anillo i { display: block; height: 100%; width: 0; background: var(--hoja); transition: width .1s linear; }
+
+/* ---------- Ficha ---------- */
+#ficha { position: fixed; left: 2vw; top: 14vh; width: 64vw; max-height: 83vh; overflow-y: auto;
+  background: var(--papel); border-radius: 26px; padding: 2.2vh 2.4vw; box-shadow: 0 8px 0 rgba(0,0,0,.28); }
+.cab { display: flex; gap: 1vw; flex-wrap: wrap; margin-bottom: .6vh; }
+.chip { background: var(--rio); color: #fff; border-radius: 99px; padding: .15em .9em; font-weight: 800; font-size: clamp(.95rem, 1.5vw, 1.7rem); }
+.chip.anio { background: var(--hoja); }
+#ficha h2 { margin: .1em 0 .3em; font-size: clamp(1.6rem, 3vw, 3.4rem); color: var(--rio-osc); line-height: 1.05; }
+#ficha p { margin: .35em 0; font-size: clamp(1.1rem, 1.95vw, 2.4rem); line-height: 1.27; }
+#ficha p.curio { background: #fff3d6; border-radius: 14px; padding: .4em .7em; }
+#ficha p.voz { font-style: italic; color: #5b3a24; font-size: clamp(1rem, 1.7vw, 2rem); }
+#ficha p.fuente { font-size: clamp(.75rem, 1.05vw, 1.15rem); color: #6b4a2b; }
+#ficha p.pista { font-weight: 800; color: var(--acento); font-size: clamp(1.05rem, 1.8vw, 2.1rem); }
+.barra { height: 1.4vh; min-height: 10px; background: #e4d3b6; border-radius: 99px; overflow: hidden; margin: .8vh 0; }
+.barra i { display: block; height: 100%; width: 0; background: var(--oro); }
+.opciones { display: grid; gap: 1.1vh; margin-top: 1vh; }
+.op { position: relative; display: flex; align-items: center; gap: 1.2vw; background: #fff; border: 4px solid #d9c9a8; border-radius: 18px; padding: 1vh 1.2vw; overflow: hidden; }
+.op .letra { flex: none; width: 2.3em; height: 2.3em; border-radius: 50%; background: var(--rio); color: #fff; display: grid; place-items: center; font-weight: 900; font-size: clamp(1.4rem, 2.6vw, 3rem); z-index: 1; }
+.op .txt { flex: 1; font-weight: 800; font-size: clamp(1.1rem, 2vw, 2.4rem); line-height: 1.15; z-index: 1; }
+.op .gesto { flex: none; font-weight: 800; color: var(--rio-osc); font-size: clamp(.9rem, 1.5vw, 1.8rem); text-align: right; z-index: 1; max-width: 11em; }
+.op .prog { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(63,125,58,.35); }
+.op.resalta { border-color: var(--oro); box-shadow: 0 0 0 4px rgba(242,177,52,.55); }
+.op.bien { border-color: var(--hoja); background: #e3f4da; }
+.op.mal { border-color: var(--acento); background: #fde3dc; }
+.res { font-size: clamp(1.8rem, 3.6vw, 4rem); font-weight: 900; margin: .1em 0; }
+.res.bien { color: var(--hoja); } .res.mal { color: var(--acento); }
+
+/* ---------- Final ---------- */
+#final .panel { text-align: center; }
+.grilla { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4vh 1.2vw; margin: 1.6vh 0; }
+.dato { background: #fff; border: 4px solid #d9c9a8; border-radius: 18px; padding: 1vh .8vw; }
+.dato span { display: block; font-size: clamp(.9rem, 1.4vw, 1.6rem); color: var(--rio-osc); font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.dato b { font-size: clamp(1.6rem, 3.2vw, 3.8rem); line-height: 1.1; }
+.est { font-size: clamp(.85rem, 1.25vw, 1.4rem) !important; color: #6b4a2b; }
+#final details { text-align: left; margin-top: 1vh; }
+#final details li { font-size: clamp(.8rem, 1.1vw, 1.2rem); }
+#final summary { cursor: pointer; font-weight: 700; font-size: clamp(.95rem, 1.4vw, 1.5rem); }
+.error { color: var(--acento); font-weight: 800; }
+code { background: #f1e6d0; padding: .1em .4em; border-radius: 6px; font-size: .92em; }
+
+#calib { background: rgba(42,26,18,.18); }
+#calib .panel { padding: 1.6vh 2vw; margin: 0 auto auto; }
+</style>
+</head>
+<body>
+<canvas id="escena"></canvas>
+<video id="video" playsinline muted style="display:none"></video>
+
+<!-- HUD -->
+<div id="hud" class="oculto">
+  <div class="stat"><span>Puntaje</span><b id="hPuntos">0</b></div>
+  <div class="stat"><span>Pasos</span><b id="hPasos">0</b></div>
+  <div class="stat"><span>Tiempo</span><b id="hTiempo">0:00</b></div>
+  <div id="ruta"><div id="rutaBarra"><i id="rutaMarca"></i></div><div id="rutaTxt">Lugares: 0</div></div>
+</div>
+<div id="aviso" class="oculto"></div>
+
+<!-- Ficha de cada lugar -->
+<div id="ficha" class="oculto"></div>
+
+<!-- Inicio: privacidad, consentimiento y modo de juego -->
+<div id="inicio" class="pantalla">
+  <div class="panel">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="48" fill="#8fd0ee"/>
+        <path d="M0 66 Q25 56 50 66 T100 66 V100 H0Z" fill="#b5532f"/>
+        <g fill="#fffdf5"><circle cx="38" cy="38" r="12"/><circle cx="56" cy="34" r="13"/><circle cx="66" cy="48" r="11"/><circle cx="46" cy="50" r="12"/></g>
+        <path d="M30 60 L50 52 L70 60 L50 68Z" fill="#3f7d3a"/>
+      </svg>
+      <div><h1>El Colorado en realidad mixta</h1><small>Aprendé jugando · Recorrido por la historia de El Colorado, Formosa</small></div>
+    </div>
+    <div class="privacidad">
+      <b>Antes de jugar, leé esto:</b>
+      <ul>
+        <li><b>Privacidad:</b> la cámara se procesa en esta computadora. El juego <b>no guarda ni envía</b> imágenes (Ley 25.326 de Protección de Datos Personales).</li>
+        <li><b>Consentimiento:</b> nadie juega si no quiere. Si se graba un video para redes, hace falta autorización (y de las familias, en el caso de menores).</li>
+        <li><b>Seguridad:</b> espacio despejado, sin sillas ni mochilas cerca, y pausas entre partidas.</li>
+        <li><b>Inclusión:</b> hay una variante sentada o con un solo brazo, y otra con teclado.</li>
+      </ul>
+    </div>
+    <div id="avisoLibs" class="oculto"><p class="error">No se encontraron las bibliotecas de MediaPipe en <code>libs/</code>: por ahora solo funciona el modo teclado. Corré <code>npm install</code> una vez con internet.</p></div>
+    <div class="fila">
+      <label class="modo sel"><input type="radio" name="modo" value="pie" checked><b>De pie</b><small>Caminá en el lugar, un paso al costado cambia de carril, mano arriba para responder.</small></label>
+      <label class="modo"><input type="radio" name="modo" value="acc"><b>Sentado o con un solo brazo</b><small>Mové los brazos para avanzar, inclinate para cambiar de carril y levantá una mano cuando se ilumine tu respuesta.</small></label>
+      <label class="modo"><input type="radio" name="modo" value="tec"><b>Sin cámara (teclado)</b><small>↑ avanza · ← → carriles · ↓ agarra · 1 2 3 responde.</small></label>
+    </div>
+    <div class="fila">
+      <label class="chk"><input type="checkbox" id="acepto"> Entendí cómo se usa la cámara y quiero jugar</label>
+      <span class="peso">Peso (opcional, solo para estimar calorías; no se guarda): <input id="peso" type="number" min="20" max="200" value="60"> kg</span>
+    </div>
+    <div class="fila"><button class="grande" id="btnEmpezar" disabled>¡Empezar el recorrido!</button></div>
+    <div class="pie">Teclas útiles para el docente: <b>P</b> pausa · <b>M</b> sonido · <b>F</b> pantalla completa · <b>C</b> silueta/cámara completa · <b>Esc</b> volver acá.<br>
+      Instructivo 43 · Realidad mixta · ISFD y T «República Federal de Alemania» · El Colorado, Formosa. Los textos históricos son del grupo; la IA escribió el código (UNESCO, 2021).</div>
+  </div>
+</div>
+
+<div id="cargando" class="pantalla oculto"><div class="panel"><h2>Preparando el juego…</h2><p id="cargandoTxt">Cargando…</p></div></div>
+
+<!-- Calibración de 3 segundos -->
+<div id="calib" class="pantalla oculto">
+  <div class="panel">
+    <h2>Calibración</h2>
+    <p id="calibMsg">Quedate quieto, mirando a la cámara, a unos 2 metros.</p>
+    <p id="cuenta">…</p>
+    <div class="anillo"><i id="calibBarra"></i></div>
+  </div>
+</div>
+
+<div id="error" class="pantalla oculto">
+  <div class="panel"><h2>Ups…</h2><p id="errorTxt"></p>
+    <div class="fila"><button class="grande" id="btnErrorTeclado">Jugar con el teclado</button><button class="chico" id="btnErrorVolver">Volver</button></div></div>
+</div>
+
+<!-- Pantalla final -->
+<div id="final" class="pantalla oculto">
+  <div class="panel">
+    <h1>¡Terminaste el recorrido!</h1>
+    <div class="grilla">
+      <div class="dato"><span>Puntaje</span><b id="fPuntos">0</b></div>
+      <div class="dato"><span>Pasos</span><b id="fPasos">0</b></div>
+      <div class="dato"><span>Tiempo en movimiento</span><b id="fMov">0:00</b></div>
+      <div class="dato"><span>Calorías estimadas*</span><b id="fKcal">0</b></div>
+      <div class="dato"><span>Lugares visitados</span><b id="fLugares">0</b></div>
+      <div class="dato"><span>Respuestas correctas</span><b id="fOk">0</b></div>
+    </div>
+    <p class="est">*Es una <b>estimación</b>, no una medición: 3,5 × peso (<span id="fPeso">60</span> kg) × horas en movimiento. Tiempo total: <span id="fTotal">0:00</span> · Algodones agarrados: <span id="fAlg">0</span>.</p>
+    <p><b id="fRepetir"></b></p>
+    <p class="est">Descansá un rato y tomá agua antes de la próxima partida.</p>
+    <details><summary>Fuentes de los datos históricos</summary><ul></ul></details>
+    <div class="fila" style="justify-content:center"><button class="chico" id="btnSalir">Volver al inicio</button></div>
+  </div>
+</div>
+
+<script>
+/* Carga las bibliotecas: primero las locales (libs/, sin conexión); si no están, las baja de internet. */
+(function () {
+  var THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js';
+  var POSE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/';
+  window.POSE_BASE = 'libs/pose/';
+  function cargar(src, plan, fin) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = function () { fin(true); };
+    s.onerror = function () { if (plan) cargar(plan.src, null, function (ok) { if (ok && plan.alCargar) plan.alCargar(); fin(ok); }); else fin(false); };
+    document.head.appendChild(s);
+  }
+  window.cargarLibrerias = function (listo) {
+    cargar('libs/three.min.js', { src: THREE_CDN }, function () {
+      cargar('libs/pose/pose.js', { src: POSE_CDN + 'pose.js', alCargar: function () { window.POSE_BASE = POSE_CDN; } }, function () { listo(); });
+    });
+  };
+})();
+</script>
+<script>
+/* ============================================================
+   DATOS DEL JUEGO · El Colorado, Formosa
+   Acá se editan los lugares, las fichas y las fuentes.
+   Las decisiones sobre QUÉ contar y CÓMO contarlo son del grupo.
+   ============================================================ */
+const CONFIG = {
+  pueblo: 'El Colorado',
+  provincia: 'Formosa',
+  separacion: 34,          // metros entre un lugar y el siguiente
+  largoPaso: 1.5,          // metros que avanza el jugador por cada paso
+  velocidadMax: 6.5,       // metros por segundo (tope visual)
+  carriles: [-2.4, 0, 2.4],
+  puntosAlgodon: 10,
+  puntosRespuesta: 50,
+  segundosCalibracion: 3,
+  holdRespuesta: 0.9,      // segundos con la mano arriba para confirmar
+  lecturaSeg: 12,          // tiempo de lectura de la ficha (se puede saltear)
+  lecturaAccSeg: 22,       // idem, en modo accesible
+  feedbackSeg: 4.5,
+  escalaAvatar: 0.82,      // tamaño de la silueta en pantalla
+  // Fotos propias de los lugares (opcional). Copiá las fotos en /fotos y completá:
+  // fotos: { puerto: 'fotos/puerto.jpg', subcomisaria: 'fotos/subcomisaria.jpg', ... }
+  fotos: {}
+};
+
+/* Cada lugar: nombre, año, dato, curiosidad, pregunta con 3 opciones y fuente. */
+const LUGARES = [
+  {
+    id: 'puerto',
+    nombre: 'El puerto del Km. 192',
+    anio: 'Fines del siglo XIX',
+    dato: 'Antes de que existiera el pueblo había un puerto sobre el río Bermejo, llamado «Km. 192 de Navegación». Ese número marcaba la distancia hasta la desembocadura en el río Paraguay.',
+    curiosidad: 'El nombre «El Colorado» viene del color de las aguas del Bermejo cuando crece.',
+    pregunta: '¿Por qué el pueblo se llama El Colorado?',
+    opciones: [
+      'Por el color de las aguas del río Bermejo cuando crece',
+      'Por una flor roja que crecía en la costa',
+      'Por el color de los techos de las primeras casas'
+    ],
+    correcta: 0,
+    fuente: 'Plan Estratégico de Desarrollo Local, Parte III: El Colorado (Gobierno de Formosa); Argentina Folklore y Provincias.',
+    color: '#b5532f'
+  },
+  {
+    id: 'subcomisaria',
+    nombre: 'La Subcomisaría',
+    anio: '11 de febrero de 1936',
+    dato: 'El 11 de febrero de 1936 se instaló la primera subcomisaría, a cargo del sargento Pedro Barraza. Fue la primera institución pública del lugar, y por eso esa fecha se toma como fundación de El Colorado.',
+    curiosidad: 'El agrimensor Oscar Gigena Centeno midió las tierras y escribió «El Colorado» en el plano.',
+    pregunta: '¿Qué hecho se toma como fecha de fundación del pueblo?',
+    opciones: [
+      'La inauguración del puente Libertad',
+      'La llegada del primer tren',
+      'La instalación de la primera subcomisaría'
+    ],
+    correcta: 2,
+    fuente: 'Formosa Hermosa (Gobierno de Formosa), «El Colorado»; Plan Estratégico de Desarrollo Local, Parte III.',
+    color: '#2f5d8a'
+  },
+  {
+    id: 'chacra',
+    nombre: 'La Chacra Experimental y la desmotadora',
+    anio: '24 de febrero de 1939',
+    dato: 'La Junta Nacional del Algodón creó una chacra experimental y una desmotadora de algodón en el km 193 de navegación del río Bermejo. Su primer director fue el agrónomo Alberto Pérez.',
+    curiosidad: 'La desmotadora separa la fibra de la semilla. Se dice que permitió duplicar el precio de la fibra.',
+    voz: {
+      texto: 'En el 70 teníamos más de 100.000 hectáreas de algodón. Hoy quedan menos de 5.000.',
+      quien: 'Rolando Zieseniss, productor y dirigente de la Federación Agraria en El Colorado (Bichos de Campo, 2026)'
+    },
+    pregunta: '¿Quién creó la Chacra Experimental en 1939?',
+    opciones: [
+      'El INTA',
+      'La Junta Nacional del Algodón',
+      'La Municipalidad'
+    ],
+    correcta: 1,
+    fuente: 'Diario Norte, «INTA El Colorado, camino a los 80 años»; Bichos de Campo, nota a Rolando Zieseniss.',
+    color: '#3f7d3a'
+  },
+  {
+    id: 'fomento',
+    nombre: 'La Comisión de Fomento',
+    anio: '1944',
+    dato: 'En 1944 el Gobierno de los Territorios Nacionales reconoció legalmente a El Colorado como Comisión de Fomento: un grupo de vecinos encargado de cuidar el progreso del pueblo.',
+    curiosidad: 'Trece años después, en 1957, El Colorado pasó a ser Municipio.',
+    pregunta: '¿En qué año El Colorado pasó a ser Municipio?',
+    opciones: [
+      '1957',
+      '1939',
+      '1990'
+    ],
+    correcta: 0,
+    fuente: 'Formosa Hermosa (Gobierno de Formosa), «El Colorado».',
+    color: '#c9942a'
+  },
+  {
+    id: 'inta',
+    nombre: 'La Estación Experimental del INTA',
+    anio: '4 de diciembre de 1956',
+    dato: 'En 1946 la chacra pasó al Ministerio de Agricultura y Ganadería de la Nación y se llamó «Estación Experimental». Con la creación del INTA, en 1956, pasó a ser la EEA El Colorado.',
+    curiosidad: 'Hoy tiene 450 hectáreas y estudia horticultura, algodón, frutas, ganadería y hasta cría de peces.',
+    pregunta: '¿Qué significan las siglas INTA?',
+    opciones: [
+      'Instituto Nacional de Trabajo Agrícola',
+      'Instituto Nacional de Tierras y Algodón',
+      'Instituto Nacional de Tecnología Agropecuaria'
+    ],
+    correcta: 2,
+    fuente: 'Diario Norte, «INTA El Colorado, camino a los 80 años»; INTA, «EEA El Colorado» (argentina.gob.ar/inta).',
+    color: '#4a8f6a'
+  },
+  {
+    id: 'arco',
+    nombre: 'El Arco y el puente Libertad',
+    anio: '8 de febrero de 1958',
+    dato: 'El puente Libertad se inauguró el 8 de febrero de 1958 y une El Colorado con General San Martín, en el Chaco, por encima del río Bermejo.',
+    curiosidad: 'El Arco del acceso sur tiene tres pilares: representan al pueblo indígena, al inmigrante europeo y al criollo.',
+    pregunta: '¿Qué representan los tres pilares del Arco?',
+    opciones: [
+      'Los tres ríos de la región',
+      'Los pueblos indígena, inmigrante europeo y criollo',
+      'Las tres provincias vecinas'
+    ],
+    correcta: 1,
+    fuente: 'Formosa Hermosa (Gobierno de Formosa), «El Colorado»; Argentina Folklore y Provincias.',
+    color: '#b5381f'
+  }
+];
+
+/* Fuentes completas que se muestran al final de la partida. */
+const FUENTES = [
+  'Diario Norte: «INTA El Colorado, camino a los 80 años al servicio del productor rural y su familia» (diarionorte.com).',
+  'INTA: «Estación Experimental Agropecuaria El Colorado» (argentina.gob.ar/inta/cr-chaco-formosa/eea-elcolorado).',
+  'Gobierno de Formosa: «El Colorado» en Formosa Hermosa (formosahermosa.gob.ar/circuito-sur/el-colorado).',
+  'Gobierno de Formosa: Plan Estratégico de Desarrollo Local, Parte III: El Colorado.',
+  'Bichos de Campo: nota a Rolando Zieseniss sobre el algodón en Formosa (2026).',
+  'Argentina Folklore y Provincias: «El Colorado, La Perla del Sur Formoseño».'
+];
+
+</script>
+<script>
+/* ============================================================
+   DETECCIÓN DE MOVIMIENTOS con los puntos del cuerpo (MediaPipe Pose)
+   - Caminar en el lugar: las rodillas suben y bajan alternadas.
+   - Costados: la posición de la cadera dice en qué carril está.
+   - Mano arriba: la muñeca queda por encima del hombro.
+   - Calibración: la persona se queda quieta y se toma su referencia.
+   Todo se calcula con números; no se guarda ninguna imagen.
+   ============================================================ */
+const PT = { NARIZ: 0, HOMBRO_I: 11, HOMBRO_D: 12, MUNECA_I: 15, MUNECA_D: 16,
+             CADERA_I: 23, CADERA_D: 24, RODILLA_I: 25, RODILLA_D: 26 };
+
+/* Cuenta un "paso" cada vez que una señal cambia de sentido con suficiente amplitud. */
+class ZigZag {
+  constructor(amp) { this.amp = amp; this.reset(); }
+  reset() { this.dir = 0; this.ext = null; }
+  push(v) {
+    if (this.ext === null) { this.ext = v; return false; }
+    if (this.dir === 0) {
+      if (v - this.ext >= this.amp) { this.dir = 1; this.ext = v; }
+      else if (this.ext - v >= this.amp) { this.dir = -1; this.ext = v; }
+      return false;
+    }
+    if (this.dir === 1) {
+      if (v > this.ext) { this.ext = v; return false; }
+      if (this.ext - v >= this.amp) { this.dir = -1; this.ext = v; return true; }
+      return false;
+    }
+    if (v < this.ext) { this.ext = v; return false; }
+    if (v - this.ext >= this.amp) { this.dir = 1; this.ext = v; return true; }
+    return false;
+  }
+}
+
+const mediana = a => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+
+class Detector {
+  /* modo: 'pie' (caminar en el lugar) o 'acc' (sentado o con un solo brazo) */
+  constructor(modo, segCalib) {
+    this.modo = modo === 'acc' ? 'acc' : 'pie';
+    this.segCalib = segCalib || 3;
+    this.reiniciar();
+  }
+
+  reiniciar() {
+    this.base = null;
+    this.calib = { t0: null, muestras: [] };
+    this.zz = new ZigZag(0.05);
+    this.ultimoPaso = -99;
+    this.carril = 0;
+    this.ultimaVez = -99;
+  }
+
+  _ok(lm, i, min) {
+    const p = lm && lm[i];
+    return !!p && (p.visibility === undefined || p.visibility >= (min === undefined ? 0.5 : min));
+  }
+
+  /* Medidas del cuerpo en coordenadas de imagen, con x espejada (como un espejo). */
+  _medidas(lm) {
+    const hi = lm[PT.HOMBRO_I], hd = lm[PT.HOMBRO_D];
+    const sw = Math.abs(hi.x - hd.x);
+    const hx = 1 - (hi.x + hd.x) / 2;
+    const sy = (hi.y + hd.y) / 2;
+    let torso = null, cx = hx;
+    if (this._ok(lm, PT.CADERA_I, 0.4) && this._ok(lm, PT.CADERA_D, 0.4)) {
+      const ci = lm[PT.CADERA_I], cd = lm[PT.CADERA_D];
+      torso = Math.hypot(((hi.x + hd.x) - (ci.x + cd.x)) / 2, sy - (ci.y + cd.y) / 2);
+      if (this.modo === 'pie') cx = 1 - (ci.x + cd.x) / 2;
+    }
+    if (torso === null) torso = sw * 1.3;
+    return { sw, hx, cx, sy, torso };
+  }
+
+  _valido(lm) {
+    if (!lm || lm.length < 29) return false;
+    if (!this._ok(lm, PT.HOMBRO_I, 0.6) || !this._ok(lm, PT.HOMBRO_D, 0.6)) return false;
+    if (this.modo === 'pie') {
+      for (const i of [PT.CADERA_I, PT.CADERA_D, PT.RODILLA_I, PT.RODILLA_D]) {
+        if (!this._ok(lm, i, 0.5)) return false;
+      }
+    }
+    return true;
+  }
+
+  /* Calibración: devuelve {listo, progreso (0..1), motivo}. */
+  calibrar(lm, t) {
+    const c = this.calib;
+    if (!this._valido(lm)) {
+      c.t0 = null; c.muestras = [];
+      return { listo: false, progreso: 0, motivo: this.modo === 'pie' ? 'cuerpo' : 'hombros' };
+    }
+    const m = this._medidas(lm);
+    if (c.t0 === null) { c.t0 = t; c.muestras = []; }
+    c.muestras.push(m);
+    const xs = c.muestras.map(s => s.cx);
+    if (Math.max(...xs) - Math.min(...xs) > 0.6 * m.sw + 0.02) {
+      // se movió mucho: empezar de nuevo
+      c.t0 = t; c.muestras = [m];
+      return { listo: false, progreso: 0, motivo: 'quieto' };
+    }
+    const progreso = Math.min(1, (t - c.t0) / this.segCalib);
+    if (progreso >= 1) {
+      this.base = {
+        cx: mediana(c.muestras.map(s => s.cx)),
+        sw: mediana(c.muestras.map(s => s.sw)),
+        torso: mediana(c.muestras.map(s => s.torso)),
+        sy: mediana(c.muestras.map(s => s.sy))
+      };
+      this.zz.reset();
+      this.carril = 0;
+      return { listo: true, progreso: 1, motivo: '' };
+    }
+    return { listo: false, progreso, motivo: '' };
+  }
+
+  /* Devuelve el estado del cuerpo en este cuadro. */
+  procesar(lm, t) {
+    const est = { presente: false, carril: this.carril, manoI: false, manoD: false,
+                  pasosNuevos: 0, caminando: false };
+    if (!this.base || !lm || lm.length < 29 || !this._ok(lm, PT.HOMBRO_I, 0.4) || !this._ok(lm, PT.HOMBRO_D, 0.4)) {
+      est.caminando = (t - this.ultimoPaso) < 0.85;
+      return est;
+    }
+    est.presente = true;
+    this.ultimaVez = t;
+    const b = this.base;
+    const m = this._medidas(lm);
+
+    // Carril según la posición lateral (en anchos de hombros)
+    const dx = (m.cx - b.cx) / b.sw;
+    const [sale, vuelve] = this.modo === 'pie' ? [0.75, 0.38] : [0.5, 0.25];
+    if (this.carril === 0) { if (dx < -sale) this.carril = -1; else if (dx > sale) this.carril = 1; }
+    else if (this.carril === -1) { if (dx > -vuelve) this.carril = 0; }
+    else if (dx < vuelve) this.carril = 0;
+    est.carril = this.carril;
+    est.dx = dx;
+
+    // Mano arriba: muñeca por encima del hombro
+    const margen = 0.12 * m.torso;
+    est.manoI = this._ok(lm, PT.MUNECA_I, 0.4) && lm[PT.MUNECA_I].y < lm[PT.HOMBRO_I].y - margen;
+    est.manoD = this._ok(lm, PT.MUNECA_D, 0.4) && lm[PT.MUNECA_D].y < lm[PT.HOMBRO_D].y - margen;
+
+    // Pasos
+    let senal = null, amp = 0;
+    if (this.modo === 'pie') {
+      if (this._ok(lm, PT.RODILLA_I, 0.4) && this._ok(lm, PT.RODILLA_D, 0.4)) {
+        senal = lm[PT.RODILLA_I].y - lm[PT.RODILLA_D].y;
+        amp = 0.17 * m.torso;
+      }
+    } else {
+      // Variante accesible: mover los brazos arriba y abajo (con uno o con los dos)
+      const oi = this._ok(lm, PT.MUNECA_I, 0.4), od = this._ok(lm, PT.MUNECA_D, 0.4);
+      if (oi && od) senal = lm[PT.MUNECA_I].y - lm[PT.MUNECA_D].y;
+      else if (oi) senal = lm[PT.MUNECA_I].y;
+      else if (od) senal = lm[PT.MUNECA_D].y;
+      amp = 0.3 * m.torso;
+    }
+    if (senal !== null) {
+      this.zz.amp = Math.max(0.015, amp);
+      if (this.zz.push(senal) && (t - this.ultimoPaso) > 0.14) {
+        est.pasosNuevos = 1;
+        this.ultimoPaso = t;
+      }
+    }
+    est.caminando = (t - this.ultimoPaso) < 0.85;
+    return est;
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { Detector, ZigZag, PT };
+
+</script>
+<script>
+/* ============================================================
+   MUNDO 3D con Three.js · El Colorado
+   Formas simples para que corra bien en las computadoras de la escuela.
+   ============================================================ */
+function crearMundo(THREE, canvas, CFG, LUGARES) {
+  const N = LUGARES.length;
+  const SEP = CFG.separacion;
+  const lugarZ = i => -(i + 1) * SEP;
+  const LARGO = SEP * (N + 1) + 60;
+
+  // ---------- Renderer, escena y cámara ----------
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9ad3ee);
+  scene.fog = new THREE.Fog(0xd3e9f2, 30, 115);
+  const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 220);
+  const rig = new THREE.Group();          // la cámara y la silueta del jugador viajan juntas
+  rig.add(camera);
+  scene.add(rig);
+  camera.position.set(0, 1.9, 0);
+  camera.rotation.x = -0.07;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xa98462, 0.95));
+  const sol = new THREE.DirectionalLight(0xfff0d0, 0.85);
+  sol.position.set(-20, 40, 12);
+  scene.add(sol);
+
+  // ---------- Ayudas para dibujar ----------
+  let semilla = 7;
+  const azar = () => { semilla |= 0; semilla = (semilla + 0x6D2B79F5) | 0; let t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const mats = {};
+  const M = (c, extra) => {
+    const k = c + (extra ? JSON.stringify(extra) : '');
+    return mats[k] || (mats[k] = new THREE.MeshLambertMaterial(Object.assign({ color: c }, extra || {})));
+  };
+  const agregar = (p, mesh, x, y, z) => { mesh.position.set(x, y, z); p.add(mesh); return mesh; };
+  const caja = (p, w, h, d, c, x, y, z, extra) => agregar(p, new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c, extra)), x, y + h / 2, z);
+  const cil = (p, rt, rb, h, c, x, y, z, seg) => agregar(p, new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 12), M(c)), x, y + h / 2, z);
+  const esfera = (p, r, c, x, y, z) => agregar(p, new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), M(c)), x, y, z);
+  function techo(p, w, d, h, c, x, y, z) {
+    const g = new THREE.ConeGeometry(1, h, 4);
+    g.rotateY(Math.PI / 4);
+    const m = agregar(p, new THREE.Mesh(g, M(c)), x, y + h / 2, z);
+    m.scale.set(w / Math.SQRT2, 1, d / Math.SQRT2);
+    return m;
+  }
+  function rr(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+    g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
+    g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+  }
+  function texCartel(l1, l2, o) {
+    o = o || {};
+    const w = 1024, h = o.h || 300;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.fillStyle = o.bg || '#fff8e8'; rr(g, 6, 6, w - 12, h - 12, 38); g.fill();
+    g.lineWidth = 14; g.strokeStyle = o.acc || '#b5381f'; g.stroke();
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = o.acc || '#b5381f'; g.font = 'bold 66px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    g.fillText(l1, w / 2, h * 0.28, w - 90);
+    let tam = 118; g.font = 'bold ' + tam + 'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    while (g.measureText(l2).width > w - 100 && tam > 30) { tam -= 4; g.font = 'bold ' + tam + 'px "Trebuchet MS", "Segoe UI", Arial, sans-serif'; }
+    g.fillStyle = o.fg || '#3a1d10'; g.fillText(l2, w / 2, h * 0.64, w - 90);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  function cartel(p, l1, l2, ancho, alto, x, y, z, rotY, o) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto),
+      new THREE.MeshBasicMaterial({ map: texCartel(l1, l2, Object.assign({ h: Math.round(1024 * alto / ancho) }, o || {})), side: THREE.DoubleSide }));
+    m.position.set(x, y, z); m.rotation.y = rotY || 0; p.add(m); return m;
+  }
+  function texBandera() {
+    const c = document.createElement('canvas'); c.width = 300; c.height = 190;
+    const g = c.getContext('2d');
+    g.fillStyle = '#74acdf'; g.fillRect(0, 0, 300, 190);
+    g.fillStyle = '#ffffff'; g.fillRect(0, 63, 300, 64);
+    g.fillStyle = '#f6b40e'; g.beginPath(); g.arc(150, 95, 17, 0, 7); g.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  }
+  function bandera(p, x, z, rotY) {
+    cil(p, 0.07, 0.09, 7, '#cfcfcf', x, 0, z, 8);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.25), new THREE.MeshBasicMaterial({ map: texBandera(), side: THREE.DoubleSide }));
+    f.position.set(x, 6.1, z + 1.0); f.rotation.y = rotY || 0; p.add(f);
+  }
+  function arbol(p, x, z, esc) {
+    esc = esc || 1;
+    cil(p, 0.18 * esc, 0.26 * esc, 2.2 * esc, '#6b4a2b', x, 0, z, 7);
+    const copa = agregar(p, new THREE.Mesh(new THREE.IcosahedronGeometry(1.5 * esc, 0), M(azar() > 0.5 ? '#4d8a3a' : '#5f9b46')), x, 3.3 * esc, z);
+    copa.scale.y = 0.85;
+  }
+  function persona(p, x, z, c) {
+    cil(p, 0.2, 0.26, 1.0, c, x, 0, z, 8);
+    esfera(p, 0.2, '#e0b48c', x, 1.25, z);
+  }
+  function ventana(p, x, y, z, rotY) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({ color: 0x9fd0e8 }));
+    m.position.set(x, y, z); m.rotation.y = rotY; p.add(m);
+  }
+
+  // ---------- Suelo, calle, río ----------
+  const mundo = new THREE.Group(); scene.add(mundo);
+  const suelo = new THREE.Mesh(new THREE.PlaneGeometry(500, LARGO + 200), M('#c98f5b'));
+  suelo.rotation.x = -Math.PI / 2; suelo.position.set(0, -0.02, -LARGO / 2 + 60); mundo.add(suelo);
+  const calle = new THREE.Mesh(new THREE.PlaneGeometry(8.8, LARGO + 120), M('#6c635a'));
+  calle.rotation.x = -Math.PI / 2; calle.position.set(0, 0.005, -LARGO / 2 + 30); mundo.add(calle);
+  for (const sx of [-1, 1]) {
+    caja(mundo, 2.6, 0.18, LARGO + 120, '#bdb6a6', sx * 5.9, 0, -LARGO / 2 + 30);
+    caja(mundo, 0.35, 0.2, LARGO + 120, '#8f887a', sx * 4.55, 0, -LARGO / 2 + 30);
+  }
+  // rayas separadoras de carriles
+  const raya = new THREE.BoxGeometry(0.14, 0.02, 1.8);
+  const rayas = new THREE.InstancedMesh(raya, new THREE.MeshBasicMaterial({ color: 0xf1ead6 }), Math.ceil(LARGO / 4) * 2);
+  { const o = new THREE.Object3D(); let k = 0;
+    for (let z = 4; z > -LARGO; z -= 4) for (const x of [-1.2, 1.2]) { o.position.set(x, 0.03, z); o.updateMatrix(); rayas.setMatrixAt(k++, o.matrix); }
+    rayas.count = k; rayas.instanceMatrix.needsUpdate = true; mundo.add(rayas); }
+  // pasto a la derecha y río Bermejo
+  const pasto = new THREE.Mesh(new THREE.PlaneGeometry(22, LARGO + 160), M('#6f9c47'));
+  pasto.rotation.x = -Math.PI / 2; pasto.position.set(17, 0.0, -LARGO / 2 + 40); mundo.add(pasto);
+  const cAgua = document.createElement('canvas'); cAgua.width = 256; cAgua.height = 256;
+  { const g = cAgua.getContext('2d'); g.fillStyle = '#a8452a'; g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = 'rgba(255,200,160,0.35)'; g.lineWidth = 3;
+    for (let i = 0; i < 14; i++) { const y = i * 19 + 6; g.beginPath(); for (let x = 0; x <= 256; x += 16) g.lineTo(x, y + Math.sin((x + i * 30) / 22) * 4); g.stroke(); } }
+  const aguaTex = new THREE.CanvasTexture(cAgua); aguaTex.colorSpace = THREE.SRGBColorSpace;
+  aguaTex.wrapS = aguaTex.wrapT = THREE.RepeatWrapping; aguaTex.repeat.set(30, 90);
+  const rio = new THREE.Mesh(new THREE.PlaneGeometry(240, LARGO + 200), new THREE.MeshBasicMaterial({ map: aguaTex, fog: true }));
+  rio.rotation.x = -Math.PI / 2; rio.position.set(148, -0.05, -LARGO / 2 + 40); mundo.add(rio);
+
+  // cielo: sol y nubes
+  const solMesh = new THREE.Mesh(new THREE.SphereGeometry(7, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff1a8, fog: false }));
+  solMesh.position.set(-60, 70, -170); scene.add(solMesh);
+  const nubes = [];
+  for (let i = 0; i < 9; i++) {
+    const n = new THREE.Group();
+    for (let k = 0; k < 3; k++) { const e = new THREE.Mesh(new THREE.SphereGeometry(5 + azar() * 3, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false })); e.scale.y = 0.55; e.position.set(k * 7 - 7, azar() * 1.5, 0); n.add(e); }
+    n.position.set(-90 + azar() * 180, 48 + azar() * 16, -30 - azar() * 200); scene.add(n); nubes.push(n);
+  }
+
+  // ---------- Casas y árboles de relleno ----------
+  const paleta = ['#f2e4c9', '#e9c9a0', '#d9e3d0', '#f0d2c2', '#cfdde8', '#f5efe0'];
+  const techos = ['#8a3e2a', '#6e4a36', '#7a5a3c', '#5b6670'];
+  const cerca = z => { for (let i = 0; i < N; i++) if (Math.abs(z - lugarZ(i)) < 19) return true; return Math.abs(z + 8) < 12; };
+  for (let z = -4, k = 0; z > -LARGO + 10; z -= 10, k++) {
+    if (cerca(z)) continue;
+    for (const lado of [-1, 1]) {
+      if (lado === 1 && k % 3 !== 0) continue;               // a la derecha dejamos ver el río
+      const w = 5 + azar() * 2.5, d = 5 + azar() * 2.5, h = 3 + azar() * 1.6;
+      const x = lado * (10.5 + azar() * 2.5), zz = z + (azar() - 0.5) * 3;
+      const cs = new THREE.Group(); cs.position.set(x, 0, zz); mundo.add(cs);
+      caja(cs, w, h, d, paleta[(azar() * paleta.length) | 0], 0, 0, 0);
+      techo(cs, w + 0.8, d + 0.8, 1.8, techos[(azar() * techos.length) | 0], 0, h, 0);
+      const cara = -lado * (w / 2 + 0.02), rot = -lado * Math.PI / 2;
+      caja(cs, 0.1, 2.0, 1.0, '#7a4a2c', cara, 0, 0);
+      ventana(cs, cara, 1.8, -w / 2 + 0.7, rot); ventana(cs, cara, 1.8, w / 2 - 0.7, rot);
+    }
+  }
+  for (let z = 6; z > -LARGO; z -= 7 + azar() * 4) {
+    if (azar() > 0.25) arbol(mundo, -6.6 - azar() * 0.6, z, 0.9 + azar() * 0.4);
+    if (azar() > 0.55) arbol(mundo, 6.6 + azar() * 0.6, z + 3, 0.9 + azar() * 0.4);
+  }
+
+  // ---------- Portales con cartel ----------
+  function portal(g, l1, l2, color) {
+    for (const sx of [-1, 1]) caja(g, 0.55, 6.2, 0.55, color, sx * 4.9, 0, 0);
+    caja(g, 10.4, 0.5, 0.6, color, 0, 6.2, 0);
+    cartel(g, l1, l2, 9.6, 2.6, 0, 4.7, 0.35, 0, { acc: color });
+  }
+  const bienvenida = new THREE.Group(); bienvenida.position.set(0, 0, -8); mundo.add(bienvenida);
+  portal(bienvenida, 'BIENVENIDOS A', 'EL COLORADO · FORMOSA', '#b5532f');
+
+  // ---------- Los lugares ----------
+  const construir = {
+    puerto(g) {
+      caja(g, 15, 0.25, 3.4, '#7b5a3a', 15.5, 0.55, -1);
+      for (let i = 0; i < 6; i++) for (const sz of [-2.4, 0.4]) cil(g, 0.18, 0.18, 1.7, '#5d4228', 9 + i * 2.6, 0, sz, 6);
+      caja(g, 5.2, 0.8, 1.9, '#2f5d8a', 19, 0.15, 4.2); caja(g, 2, 1.1, 1.5, '#f4f1e8', 18, 0.95, 4.2);
+      cil(g, 0.07, 0.07, 3.6, '#555', 20.4, 0.9, 4.2, 6);
+      cil(g, 0.1, 0.1, 3.2, '#6b4a2b', 6.6, 0, 3.5, 6);
+      cartel(g, 'KM 192', 'NAVEGACIÓN RÍO BERMEJO', 3.8, 1.5, 6.6, 3.6, 3.5, -0.6, { acc: '#2f5d8a' });
+      caja(g, 9, 3.4, 7, '#a09584', -12.5, 0, -3); caja(g, 9.6, 0.3, 7.6, '#59514a', -12.5, 3.4, -3);
+      for (let i = 0; i < 4; i++) cil(g, 0.45, 0.45, 1.0, i % 2 ? '#b5381f' : '#2f5d8a', -7 + (i % 2) * 0.9, 0, 1.2 - i * 1.0, 10);
+    },
+    subcomisaria(g) {
+      caja(g, 9, 4.2, 6.4, '#f6f1e4', -11.5, 0, -2); techo(g, 10.2, 7.6, 2.2, '#7a3b2a', -11.5, 4.2, -2);
+      caja(g, 0.12, 2.5, 1.5, '#2c5aa0', -6.96, 0, -2);
+      ventana(g, -6.95, 2.0, -4.2, Math.PI / 2); ventana(g, -6.95, 2.0, 0.2, Math.PI / 2);
+      cartel(g, '1936', 'SUBCOMISARÍA', 5.2, 1.5, -6.8, 3.7, -2, Math.PI / 2 - 0.5, { acc: '#2f5d8a' });
+      bandera(g, -5.8, 3.4, Math.PI / 2 - 0.2);
+      caja(g, 1.8, 0.4, 0.7, '#7b5a3a', -5.9, 0, -6);
+    },
+    chacra(g) {
+      // campo de algodón (instanciado) a la izquierda
+      const cantFil = 6, porFil = 22, total = cantFil * porFil;
+      const tallo = new THREE.InstancedMesh(new THREE.ConeGeometry(0.28, 0.9, 6), M('#3f7d3a'), total);
+      const capullo = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfffdf4 }), total);
+      const o = new THREE.Object3D(); let k = 0;
+      for (let f = 0; f < cantFil; f++) for (let i = 0; i < porFil; i++) {
+        const x = -9 - f * 1.8, z = 11 - i * 1.15;
+        o.position.set(x, 0.45, z); o.updateMatrix(); tallo.setMatrixAt(k, o.matrix);
+        o.position.set(x, 1.05, z); o.updateMatrix(); capullo.setMatrixAt(k, o.matrix); k++;
+      }
+      tallo.instanceMatrix.needsUpdate = true; capullo.instanceMatrix.needsUpdate = true; g.add(tallo); g.add(capullo);
+      // desmotadora a la derecha
+      caja(g, 10, 5.4, 8, '#8d96a0', 12.5, 0, -5); caja(g, 10.6, 0.35, 8.6, '#4a5058', 12.5, 5.4, -5);
+      cil(g, 0.6, 0.8, 10, '#8a4a38', 16.2, 0, -8.5, 10);
+      for (let i = 0; i < 6; i++) caja(g, 1.5, 1.0, 1.0, '#fffdf4', 7.6 + (i % 3) * 1.6, Math.floor(i / 3), 3.4);
+      cartel(g, '1939', 'DESMOTADORA', 5.6, 1.6, 7.4, 4.3, -1.2, -Math.PI / 2 + 0.5, { acc: '#3f7d3a' });
+    },
+    fomento(g) {
+      caja(g, 10, 4.4, 6.4, '#f6e7b4', 11.5, 0, -3); techo(g, 11.2, 7.6, 2.3, '#a04a2a', 11.5, 4.4, -3);
+      caja(g, 10, 0.3, 2.4, '#a04a2a', 6.2, 3.1, -3);
+      for (let i = 0; i < 4; i++) cil(g, 0.2, 0.2, 3.1, '#fffdf4', 5.2, 0, -5.2 + i * 1.45, 10);
+      cartel(g, '1944', 'COMISIÓN DE FOMENTO', 6.4, 1.7, 6.8, 5.3, -3, -Math.PI / 2 + 0.5, { acc: '#c9942a' });
+      bandera(g, 5.9, 3, -Math.PI / 2 + 0.2);
+      arbol(g, -10, -2, 1.3); caja(g, 2.2, 0.5, 0.6, '#7b5a3a', -7.6, 0, 2.5);
+      persona(g, -8.2, -1.2, '#b5381f'); persona(g, -9.3, 0.2, '#2f5d8a'); persona(g, -7.4, 0.4, '#3f7d3a');
+    },
+    inta(g) {
+      caja(g, 14, 3.3, 7.4, '#d9ecdf', -13.5, 0, -3, { transparent: true, opacity: 0.42 });
+      techo(g, 14.6, 8, 1.4, '#cfe6d6', -13.5, 3.3, -3);
+      for (let i = 0; i < 5; i++) caja(g, 0.5, 0.5, 6, '#3f7d3a', -18 + i * 2.2, 0, -3);
+      caja(g, 9, 3.8, 6.4, '#ecebe0', 11.5, 0, -3); caja(g, 9.6, 0.3, 7, '#4a8f6a', 11.5, 3.8, -3);
+      for (const [x, z] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) cil(g, 0.1, 0.1, 4.2, '#777', 15.2 + x, 0, 4.5 + z, 6);
+      cil(g, 1.5, 1.5, 2.6, '#cfd6da', 15.2, 4.2, 4.5, 16);
+      cartel(g, '1956', 'INTA · EEA EL COLORADO', 6.4, 1.8, 6.9, 4.9, -3, -Math.PI / 2 + 0.5, { acc: '#4a8f6a' });
+    },
+    arco(g) {
+      const cols = ['#b5381f', '#2f5d8a', '#3f7d3a'];
+      cols.forEach((c, i) => {
+        const z = -i * 7;
+        for (const sx of [-1, 1]) caja(g, 0.9, 6.5, 0.9, c, sx * 5.0, 0, z);
+        const arc = new THREE.Mesh(new THREE.TorusGeometry(5.0, 0.45, 8, 30, Math.PI), M(c));
+        arc.position.set(0, 6.5, z); arc.scale.set(1, 0.42, 1); g.add(arc);
+      });
+      for (const sx of [-1, 1]) caja(g, 0.25, 0.9, 30, '#e6dfd0', sx * 4.45, 0, -10);
+      cartel(g, '1958', 'PUENTE LIBERTAD', 7.8, 2.1, 0, 10.0, 0.5, 0, { acc: '#b5381f' });
+    }
+  };
+
+  const fotoLoader = new THREE.TextureLoader();
+  LUGARES.forEach((l, i) => {
+    const g = new THREE.Group(); g.position.set(0, 0, lugarZ(i)); mundo.add(g);
+    portal(g, String(l.anio).toUpperCase(), l.nombre.toUpperCase(), l.color);
+    if (construir[l.id]) construir[l.id](g);
+    // Foto propia del lugar (opcional): un cuadro al costado del camino
+    if (CFG.fotos && CFG.fotos[l.id]) {
+      fotoLoader.load(CFG.fotos[l.id], tex => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const marco = caja(g, 4.4, 3.4, 0.2, '#3a1d10', -7.2, 1.6, 7);
+        const foto = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 3.0), new THREE.MeshBasicMaterial({ map: tex }));
+        foto.position.set(-7.2, 3.1, 7.12); g.add(foto);
+        cil(g, 0.1, 0.1, 1.7, '#3a1d10', -7.2, 0, 6.9, 6);
+      }, undefined, () => { /* si la foto no está, no pasa nada */ });
+    }
+  });
+
+  // ---------- Algodón para agarrar (mano arriba) ----------
+  const items = [];
+  function crearItem(lane, z) {
+    const g = new THREE.Group();
+    for (const [x, y, zz] of [[0, 0, 0], [0.22, 0.08, 0.05], [-0.22, 0.05, 0.05], [0.08, 0.26, 0], [-0.1, -0.2, 0.1]])
+      agregar(g, new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfffdf4 })), x, y, zz);
+    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 6, 20), new THREE.MeshBasicMaterial({ color: 0xf2b134 }));
+    g.add(aro);
+    g.position.set(CFG.carriles[lane + 1], 1.15, z);
+    mundo.add(g);
+    items.push({ g, z, lane, tomado: false, anim: 0, ph: azar() * 6 });
+  }
+  function crearItems() {
+    for (let k = 0; k < N; k++) {
+      const desde = k === 0 ? -14 : lugarZ(k - 1) - 9, hasta = lugarZ(k) + 9;
+      for (let z = desde; z > hasta; z -= 6) crearItem(((azar() * 3) | 0) - 1, z);
+    }
+  }
+  crearItems();
+  function reiniciarItems() { for (const it of items) { it.tomado = false; it.anim = 0; it.g.visible = true; it.g.scale.setScalar(1); } }
+
+  // ---------- Silueta del jugador (plano pegado delante de la cámara) ----------
+  let avatar = null, avatarTex = null, avRel = 4 / 3;
+  function crearAvatar(cnv) {
+    // Si cambia el tamaño del cuadro de la cámara hay que recrear la textura (WebGL no deja cambiarle el tamaño)
+    if (avatar) { camera.remove(avatar); avatar.geometry.dispose(); avatar.material.dispose(); if (avatarTex) avatarTex.dispose(); avatar = null; }
+    avRel = cnv.width / cnv.height;
+    avatarTex = new THREE.CanvasTexture(cnv);
+    avatarTex.colorSpace = THREE.SRGBColorSpace;
+    avatarTex.minFilter = THREE.LinearFilter; avatarTex.generateMipmaps = false;
+    avatar = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ map: avatarTex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false, fog: false }));
+    avatar.renderOrder = 999; avatar.visible = false;
+    camera.add(avatar); ajustarAvatar();
+  }
+  let avatarMini = false;
+  function ajustarAvatar() {
+    if (!avatar) return;
+    const dist = 3, H = 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), W = H * camera.aspect;
+    const h = H * (avatarMini ? 0.5 : CFG.escalaAvatar), w = h * avRel;
+    avatar.scale.set(w, h, 1);
+    // En pantalla de lectura/pregunta la silueta se achica y pasa a la esquina derecha, así se puede leer la ficha
+    avatar.position.set(avatarMini ? W / 2 - w / 2 : 0, -H / 2 + h / 2, -dist);
+  }
+  function actualizarAvatar() { if (avatarTex) avatarTex.needsUpdate = true; }
+
+  // ---------- Bucle ----------
+  function redimensionar() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix(); ajustarAvatar();
+  }
+  function actualizar(S, dt, t) {
+    const objX = CFG.carriles[S.carril + 1];
+    rig.position.x += (objX - rig.position.x) * Math.min(1, dt * 7);
+    rig.position.z = S.z;
+    rig.rotation.y = S.fase === 'inicio' ? Math.sin(t * 0.25) * 0.35 : 0;
+    camera.position.y = 1.9 + (S.caminando ? Math.sin(t * 10) * 0.04 : 0);
+    if (avatar) {
+      avatar.visible = !!S.avatarVisible;
+      const mini = S.fase === 'lectura' || S.fase === 'pregunta' || S.fase === 'feedback';
+      if (mini !== avatarMini) { avatarMini = mini; ajustarAvatar(); }
+    }
+    for (const it of items) {
+      if (it.tomado) {
+        if (it.anim > 0) { it.anim -= dt * 3; it.g.scale.setScalar(1 + (1 - it.anim) * 1.6); if (it.anim <= 0) it.g.visible = false; }
+        continue;
+      }
+      it.g.position.y = 1.15 + Math.sin(t * 3 + it.ph) * 0.12; it.g.rotation.y = t * 1.6 + it.ph;
+    }
+    aguaTex.offset.y -= dt * 0.012;
+    for (const n of nubes) { n.position.x += dt * 0.8; if (n.position.x > 110) n.position.x = -110; }
+  }
+  function tomarItem(it) { it.tomado = true; it.anim = 1; }
+  function render() { renderer.render(scene, camera); }
+  window.addEventListener('resize', redimensionar);
+  redimensionar();
+
+  return { renderer, scene, camera, rig, items, lugarZ, LARGO, crearAvatar, actualizarAvatar, actualizar, tomarItem, reiniciarItems, render, redimensionar };
+}
+
+</script>
+<script>
+/* ============================================================
+   JUEGO · lógica, cámara, silueta, pantallas y puntaje
+   Privacidad: la imagen de la cámara se procesa en esta computadora.
+   Este programa NO guarda ni envía imágenes (no hay grabación, ni
+   canvas.toDataURL, ni conexiones a internet).
+   ============================================================ */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const N = LUGARES.length;
+  const LETRAS = ['A', 'B', 'C'];
+
+  // ---------- Estado ----------
+  const S = {
+    fase: 'inicio', modo: 'pie', peso: 60, usaCamara: false, recorte: true, mudo: false, pausa: false,
+    puntaje: 0, pasos: 0, tMov: 0, tTotal: 0,
+    z: 0, metaZ: 0, carril: 0, carrilPose: 0, carrilPoseAnt: 0,
+    caminando: false, ultimoPaso: -99, pasosPend: 0,
+    lugar: 0, correctas: 0, visitados: 0, algodones: 0,
+    faseT: 0, hold: { op: null, t: 0 }, holdSkip: 0, resalta: 0, resaltaT: 0, elegida: null,
+    cuerpo: null, avatarVisible: false, tecPasoT: 0, tecMano: 0, tPrev: 0, inicioT: 0
+  };
+  let mundo = null, det = null, pose = null, stream = null;
+  let video, camCanvas, camCtx;
+  const teclas = new Set();
+
+  // ---------- Sonidos (generados, sin archivos) ----------
+  let audio = null;
+  function beep(f, d, tipo, v, demora) {
+    if (S.mudo) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + (demora || 0);
+      o.type = tipo || 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(v || 0.14, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + d);
+      o.connect(g); g.connect(audio.destination); o.start(t0); o.stop(t0 + d + 0.02);
+    } catch (e) { /* sin audio: no pasa nada */ }
+  }
+  const sonido = {
+    paso() { beep(200, 0.05, 'triangle', 0.05); },
+    algodon() { beep(880, 0.1); beep(1320, 0.14, 'sine', 0.12, 0.08); },
+    ok() { [523, 659, 784, 1046].forEach((f, i) => beep(f, 0.2, 'sine', 0.15, i * 0.11)); },
+    mal() { beep(180, 0.35, 'sawtooth', 0.09); },
+    listo() { [660, 880].forEach((f, i) => beep(f, 0.18, 'sine', 0.15, i * 0.14)); },
+    lugar() { beep(440, 0.15); beep(554, 0.15, 'sine', 0.14, 0.12); beep(659, 0.25, 'sine', 0.14, 0.24); }
+  };
+
+  // ---------- Pantallas ----------
+  const PANTALLAS = {
+    inicio: ['inicio'], cargando: ['cargando'], calib: ['calib'], error: ['error'],
+    jugando: ['hud', 'aviso'], lectura: ['hud', 'ficha'], pregunta: ['hud', 'ficha'], feedback: ['hud', 'ficha'],
+    final: ['final']
+  };
+  const TODAS = ['inicio', 'cargando', 'calib', 'error', 'hud', 'aviso', 'ficha', 'final'];
+  function ir(fase) {
+    S.fase = fase; S.faseT = 0;
+    for (const id of TODAS) $(id).classList.toggle('oculto', !PANTALLAS[fase].includes(id));
+    S.avatarVisible = S.usaCamara && fase !== 'inicio' && fase !== 'cargando' && fase !== 'error';
+  }
+  function aviso(txt, alerta) {
+    const a = $('aviso');
+    if (!txt) { a.classList.add('oculto'); return; }
+    if (S.fase === 'jugando') a.classList.remove('oculto');
+    a.textContent = txt; a.classList.toggle('alerta', !!alerta);
+  }
+  function mostrarError(html, conTeclado) {
+    $('errorTxt').innerHTML = html;
+    $('btnErrorTeclado').classList.toggle('oculto', !conTeclado);
+    S.usaCamara = false; ir('error');
+  }
+  const mmss = s => { s = Math.floor(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+  // ---------- Cámara y MediaPipe ----------
+  async function iniciarCamaraYPose() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('sin-api');
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    pose = new Pose({ locateFile: f => (window.POSE_BASE || 'libs/pose/') + f });
+    const calidad = +(new URLSearchParams(location.search).get('calidad') || 0);
+    pose.setOptions({ modelComplexity: calidad, smoothLandmarks: true, enableSegmentation: true, smoothSegmentation: true,
+                      minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    pose.onResults(alResultado);
+    if (pose.initialize) await pose.initialize();
+    S.camaraViva = true;
+    bucleCamara();
+  }
+  async function bucleCamara() {
+    if (!S.camaraViva) return;
+    if (video.readyState >= 2 && video.videoWidth) {
+      try { await pose.send({ image: video }); } catch (e) { console.error('Pose.send', e); await new Promise(r => setTimeout(r, 200)); }
+    }
+    requestAnimationFrame(bucleCamara);
+  }
+  function detenerCamara() {
+    S.camaraViva = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (pose && pose.close) { try { pose.close(); } catch (e) { /* nada */ } }
+    pose = null;
+  }
+  function dibujarSilueta(r) {
+    const img = r.image; if (!img) return;
+    const w = img.videoWidth || img.width || 640, h = img.videoHeight || img.height || 480;
+    if (camCanvas.width !== w || camCanvas.height !== h) { camCanvas.width = w; camCanvas.height = h; mundo.crearAvatar(camCanvas); }
+    const c = camCtx;
+    c.save(); c.clearRect(0, 0, w, h); c.translate(w, 0); c.scale(-1, 1);          // espejo
+    if (r.segmentationMask && S.recorte) {
+      c.drawImage(r.segmentationMask, 0, 0, w, h);
+      c.globalCompositeOperation = 'source-in';                                       // deja solo a la persona
+      c.drawImage(img, 0, 0, w, h);
+    } else c.drawImage(img, 0, 0, w, h);
+    c.restore();
+    mundo.actualizarAvatar();
+  }
+  function alResultado(r) {
+    const t = performance.now() / 1000;
+    dibujarSilueta(r);
+    const lm = r.poseLandmarks;
+    if (S.fase === 'calib' && det) {
+      const c = lm ? det.calibrar(lm, t) : { listo: false, progreso: 0, motivo: S.modo === 'pie' ? 'cuerpo' : 'hombros' };
+      $('calibBarra').style.width = Math.round(c.progreso * 100) + '%';
+      $('cuenta').textContent = c.progreso > 0 ? Math.max(1, Math.ceil(CONFIG.segundosCalibracion * (1 - c.progreso))) : '…';
+      $('calibMsg').textContent = c.motivo === 'cuerpo' ? 'Alejate un poco: la cámara tiene que verte de la cabeza a las rodillas.'
+        : c.motivo === 'hombros' ? 'Mostrale los hombros a la cámara.'
+        : c.motivo === 'quieto' ? 'Quedate quieto un momentito.'
+        : 'Quedate quieto, mirando a la cámara.';
+      if (c.listo) { sonido.listo(); iniciarPartida(); }
+      return;
+    }
+    if (det) {
+      const e = det.procesar(lm, t);
+      S.cuerpo = e; S.carrilPose = e.carril;
+      if (S.fase === 'jugando' && e.pasosNuevos) S.pasosPend += e.pasosNuevos;
+    }
+  }
+
+  // ---------- Partida ----------
+  function paradaZ(i) { return mundo.lugarZ(i) + 2.4; }
+  function iniciarPartida() {
+    Object.assign(S, { puntaje: 0, pasos: 0, tMov: 0, tTotal: 0, z: 0, metaZ: 0, carril: 0, carrilPose: 0, carrilPoseAnt: 0,
+      caminando: false, ultimoPaso: -99, pasosPend: 0, lugar: 0, correctas: 0, visitados: 0, algodones: 0, elegida: null,
+      hold: { op: null, t: 0 }, holdSkip: 0, resalta: 0, resaltaT: 0, inicioT: performance.now() / 1000 });
+    mundo.reiniciarItems();
+    ir('jugando');
+    actualizarHud();
+  }
+  function empezar() {
+    S.modo = (document.querySelector('input[name=modo]:checked') || {}).value || 'pie';
+    S.peso = Math.max(20, Math.min(200, +$('peso').value || 60));
+    if (S.modo === 'tec') { S.usaCamara = false; detenerCamara(); iniciarPartida(); return; }
+    S.usaCamara = true;
+    ir('cargando');
+    $('cargandoTxt').textContent = 'Pidiendo permiso para usar la cámara…';
+    (async () => {
+      try {
+        if (!S.camaraViva) {
+          $('cargandoTxt').textContent = 'Cargando el reconocimiento del cuerpo (la primera vez tarda unos segundos)…';
+          await iniciarCamaraYPose();
+        }
+        det = new Detector(S.modo, CONFIG.segundosCalibracion);
+        S.cuerpo = null;
+        $('calibBarra').style.width = '0%'; $('cuenta').textContent = '…';
+        ir('calib');
+      } catch (e) {
+        console.error(e);
+        detenerCamara();
+        const permiso = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+        const sinCam = e && (e.name === 'NotFoundError' || e.message === 'sin-api');
+        mostrarError(permiso ? '<b>No se pudo usar la cámara.</b> El navegador no dio permiso. Tocá el candado de la barra de direcciones, permití la cámara y volvé a intentar.'
+          : sinCam ? '<b>No encuentro una cámara</b> (o el juego no se abrió con <code>INICIAR-JUEGO</code> / un servidor local). Podés jugar con el teclado.'
+          : '<b>No pude iniciar el reconocimiento del cuerpo.</b> Revisá que la carpeta <code>libs/pose</code> tenga los archivos (corré <code>npm install</code> una vez con internet). Detalle: ' + (e && e.message ? e.message : e), true);
+      }
+    })();
+  }
+
+  function actualizarHud() {
+    $('hPuntos').textContent = S.puntaje; $('hPasos').textContent = S.pasos; $('hTiempo').textContent = mmss(S.tTotal);
+    const total = -mundo.lugarZ(N - 1), p = Math.max(0, Math.min(1, -S.z / total));
+    $('rutaMarca').style.left = (p * 100) + '%';
+    $('rutaTxt').textContent = 'Lugares: ' + S.visitados + ' de ' + N;
+    document.querySelectorAll('#rutaBarra .punto').forEach((d, i) => d.classList.toggle('visto', i < S.visitados));
+  }
+
+  function entrada() {
+    const c = S.usaCamara && S.cuerpo && S.cuerpo.presente ? S.cuerpo : null;
+    return { manoI: !!(c && c.manoI), manoD: !!(c && c.manoD), tec: S.tecMano > 0 };
+  }
+
+  // ---------- Fases ----------
+  function jugar(dt, t, E) {
+    // pasos (cuerpo o teclado)
+    if (teclas.has('ArrowUp') || teclas.has('w') || teclas.has(' ')) {
+      S.tecPasoT += dt;
+      if (S.tecPasoT >= 0.42) { S.tecPasoT = 0; S.pasosPend++; }
+    } else S.tecPasoT = 0.4;
+    const n = S.pasosPend; S.pasosPend = 0;
+    const stop = paradaZ(S.lugar);
+    if (n > 0) { S.pasos += n; S.ultimoPaso = t; S.metaZ = Math.max(stop, S.metaZ - n * CONFIG.largoPaso); sonido.paso(); }
+    const falta = S.z - S.metaZ;
+    if (falta > 0.005) S.z -= Math.min(falta, Math.min(CONFIG.velocidadMax, falta * 4 + 0.6) * dt);
+    S.caminando = (t - S.ultimoPaso) < 0.85;
+    if (S.caminando) S.tMov += dt;
+
+    // carril
+    if (S.carrilPose !== S.carrilPoseAnt) { S.carril = S.carrilPose; S.carrilPoseAnt = S.carrilPose; }
+
+    // algodón: mano arriba para agarrar
+    const mano = E.manoI || E.manoD || E.tec;
+    let cerca = false;
+    for (const it of mundo.items) {
+      if (it.tomado || it.lane !== S.carril) continue;
+      const delante = S.z - it.z;                       // positivo: el algodón está adelante
+      if (delante > -0.7 && delante < 4.2) {
+        cerca = true;
+        if (mano) { mundo.tomarItem(it); S.puntaje += CONFIG.puntosAlgodon; S.algodones++; sonido.algodon(); }
+      }
+    }
+
+    // llegada al lugar
+    if (S.z <= stop + 0.06) { llegar(); return; }
+
+    // mensajes
+    const distLugar = S.z - mundo.lugarZ(S.lugar);
+    if (cerca) aviso('¡Levantá una mano para agarrar el algodón!');
+    else if (distLugar < 14) aviso('Se acerca: ' + LUGARES[S.lugar].nombre);
+    else if (S.usaCamara && S.cuerpo && !S.cuerpo.presente && (t - (det ? det.ultimaVez : 0)) > 2) aviso('No te veo. Pasá al frente de la cámara.', true);
+    else if (S.pasos === 0 || (t - S.ultimoPaso) > 3) aviso(S.modo === 'acc' ? 'Mové los brazos arriba y abajo para avanzar' : S.usaCamara ? 'Caminá en el lugar para avanzar' : 'Mantené la flecha ↑ para avanzar');
+    else aviso('');
+  }
+
+  function llegar() {
+    aviso('');
+    sonido.lugar();
+    S.visitados = S.lugar + 1; S.pasosPend = 0; S.caminando = false;
+    actualizarHud();
+    const l = LUGARES[S.lugar];
+    $('ficha').innerHTML =
+      '<div class="cab"><span class="chip">Lugar ' + (S.lugar + 1) + ' de ' + N + '</span><span class="chip anio">' + l.anio + '</span></div>' +
+      '<h2>' + l.nombre + '</h2>' +
+      '<p>' + l.dato + '</p>' +
+      '<p class="curio"><b>¿Sabías que…?</b> ' + l.curiosidad + '</p>' +
+      (l.voz ? '<p class="voz">«' + l.voz.texto + '» — ' + l.voz.quien + '</p>' : '') +
+      '<p class="fuente">Fuente: ' + l.fuente + '</p>' +
+      '<div class="barra"><i id="fBarra"></i></div>' +
+      '<p class="pista">' + (S.usaCamara && S.modo === 'pie' ? 'Cuando termines de leer, levantá las dos manos para ir a la pregunta' : S.usaCamara ? 'Cuando termines de leer, levantá una mano para ir a la pregunta' : 'Cuando termines de leer, apretá Enter') + '</p>';
+    ir('lectura');
+  }
+
+  function pasarAPregunta() {
+    const l = LUGARES[S.lugar];
+    const gesto = S.modo === 'acc'
+      ? ['', '', ''] : S.usaCamara ? ['◀ mano izquierda', 'mano derecha ▶', '▲ las dos manos'] : ['tecla 1', 'tecla 2', 'tecla 3'];
+    $('ficha').innerHTML =
+      '<div class="cab"><span class="chip">Lugar ' + (S.lugar + 1) + ' de ' + N + '</span><span class="chip anio">' + l.anio + '</span></div>' +
+      '<h2>' + l.pregunta + '</h2>' +
+      '<div class="opciones">' + l.opciones.map((o, i) =>
+        '<div class="op" id="op' + i + '"><i class="prog"></i><span class="letra">' + LETRAS[i] + '</span><span class="txt">' + o + '</span><span class="gesto">' + gesto[i] + '</span></div>').join('') + '</div>' +
+      '<p class="pista">' + (S.modo === 'acc' && S.usaCamara ? 'Levantá una mano cuando se ilumine tu respuesta' : S.usaCamara ? 'Elegí levantando la mano y mantenela arriba un momento' : 'Elegí con las teclas 1, 2 o 3') + '</p>';
+    S.hold = { op: null, t: 0 }; S.resalta = 0; S.resaltaT = 0; S.holdSkip = 0; S.esperaBajar = true;
+    ir('pregunta');
+    marcarResalte();
+  }
+  function marcarResalte() {
+    for (let i = 0; i < 3; i++) { const e = $('op' + i); if (e) e.classList.toggle('resalta', S.modo === 'acc' && S.usaCamara && i === S.resalta); }
+  }
+
+  function elegir(i) {
+    if (S.fase !== 'pregunta') return;
+    const l = LUGARES[S.lugar], ok = i === l.correcta;
+    S.elegida = i;
+    if (ok) { S.puntaje += CONFIG.puntosRespuesta; S.correctas++; sonido.ok(); } else sonido.mal();
+    $('ficha').innerHTML =
+      '<div class="cab"><span class="chip">Lugar ' + (S.lugar + 1) + ' de ' + N + '</span><span class="chip anio">' + l.anio + '</span></div>' +
+      '<p class="res ' + (ok ? 'bien' : 'mal') + '">' + (ok ? '¡Correcto! +' + CONFIG.puntosRespuesta + ' puntos' : 'Casi… la respuesta era la ' + LETRAS[l.correcta]) + '</p>' +
+      '<div class="opciones">' + l.opciones.map((o, k) =>
+        '<div class="op ' + (k === l.correcta ? 'bien' : (k === i ? 'mal' : '')) + '"><span class="letra">' + LETRAS[k] + '</span><span class="txt">' + o + '</span></div>').join('') + '</div>' +
+      '<div class="barra"><i id="fBarra"></i></div>';
+    actualizarHud();
+    ir('feedback');
+  }
+
+  function despuesDeFeedback() {
+    if (S.lugar >= N - 1) return terminar();
+    S.lugar++; S.pasosPend = 0; S.ultimoPaso = -99;
+    ir('jugando');
+  }
+
+  function terminar() {
+    const horas = S.tMov / 3600, kcal = 3.5 * S.peso * horas;
+    $('fPuntos').textContent = S.puntaje; $('fPasos').textContent = S.pasos;
+    $('fMov').textContent = mmss(S.tMov); $('fTotal').textContent = mmss(S.tTotal);
+    $('fKcal').textContent = '≈ ' + (kcal < 10 ? kcal.toFixed(1) : Math.round(kcal)).toString().replace('.', ',') + ' kcal';
+    $('fLugares').textContent = S.visitados + ' de ' + N; $('fOk').textContent = S.correctas + ' de ' + N;
+    $('fAlg').textContent = S.algodones;
+    $('fPeso').textContent = S.peso;
+    $('fRepetir').textContent = S.usaCamara ? 'Levantá las dos manos para volver a jugar (se vuelve a calibrar)' : 'Apretá Enter para volver a jugar';
+    sonido.ok();
+    ir('final');
+    S.holdSkip = 0;
+  }
+
+  function reiniciarTodo() {
+    if (S.usaCamara && det) { det.reiniciar(); S.cuerpo = null; $('calibBarra').style.width = '0%'; $('cuenta').textContent = '…'; ir('calib'); }
+    else iniciarPartida();
+  }
+
+  // ---------- Bucle principal ----------
+  function tick(now) {
+    const dt = Math.min(0.05, (now - S.tPrev) / 1000); S.tPrev = now;
+    const t = now / 1000;
+    if (S.tecMano > 0) S.tecMano -= dt;
+    if (!S.pausa) {
+      const E = entrada();
+      const mano = E.manoI || E.manoD || E.tec;
+      const ambas = (E.manoI && E.manoD) || (S.modo === 'acc' && mano);
+      if (S.fase !== 'inicio' && S.fase !== 'cargando' && S.fase !== 'error' && S.fase !== 'calib' && S.fase !== 'final') S.tTotal += dt;
+      if (S.fase === 'jugando') jugar(dt, t, E);
+      else if (S.fase === 'lectura') {
+        S.faseT += dt;
+        const tope = S.modo === 'acc' ? CONFIG.lecturaAccSeg : CONFIG.lecturaSeg;
+        const b = $('fBarra'); if (b) b.style.width = Math.min(100, S.faseT / tope * 100) + '%';
+        S.holdSkip = ambas && S.usaCamara ? S.holdSkip + dt : 0;
+        if (S.faseT >= 3 && S.holdSkip >= 0.8) pasarAPregunta();
+        else if (S.faseT >= tope) pasarAPregunta();
+      } else if (S.fase === 'pregunta') {
+        S.faseT += dt;
+        if (S.esperaBajar) { if (!mano && S.faseT > 0.8) S.esperaBajar = false; }   // primero hay que bajar las manos
+        else if (S.usaCamara) {
+          if (S.modo === 'acc') {
+            if (!mano) {
+              S.resaltaT += dt; S.hold.t = 0;
+              if (S.resaltaT > 2.4) { S.resaltaT = 0; S.resalta = (S.resalta + 1) % 3; marcarResalte(); }
+            } else { S.hold.t += dt; }
+            for (let i = 0; i < 3; i++) { const p = document.querySelector('#op' + i + ' .prog'); if (p) p.style.width = (i === S.resalta ? Math.min(100, S.hold.t / 0.6 * 100) : 0) + '%'; }
+            if (S.hold.t >= 0.6) elegir(S.resalta);
+          } else {
+            const cand = E.manoI && E.manoD ? 2 : E.manoI ? 0 : E.manoD ? 1 : null;
+            if (cand !== S.hold.op) { S.hold.op = cand; S.hold.t = 0; } else if (cand !== null) S.hold.t += dt;
+            for (let i = 0; i < 3; i++) { const p = document.querySelector('#op' + i + ' .prog'); if (p) p.style.width = (i === cand ? Math.min(100, S.hold.t / CONFIG.holdRespuesta * 100) : 0) + '%'; }
+            if (cand !== null && S.hold.t >= CONFIG.holdRespuesta) elegir(cand);
+          }
+        }
+      } else if (S.fase === 'feedback') {
+        S.faseT += dt;
+        const tope = S.modo === 'acc' ? CONFIG.feedbackSeg + 2 : CONFIG.feedbackSeg;
+        const b = $('fBarra'); if (b) b.style.width = Math.min(100, S.faseT / tope * 100) + '%';
+        if (S.faseT >= tope) despuesDeFeedback();
+      } else if (S.fase === 'final') {
+        S.holdSkip = ambas && S.usaCamara ? S.holdSkip + dt : 0;
+        S.faseT += dt;
+        if (S.faseT > 2 && S.holdSkip >= 1.2) reiniciarTodo();
+      }
+      if (S.fase === 'jugando' || S.fase === 'lectura' || S.fase === 'pregunta' || S.fase === 'feedback') actualizarHud();
+    }
+    mundo.actualizar(S, dt, t);
+    mundo.render();
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Teclado (también sirve para el docente) ----------
+  window.addEventListener('keydown', ev => {
+    if (ev.target && /INPUT|TEXTAREA/.test(ev.target.tagName) && ev.key !== 'Escape') return;
+    const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
+    teclas.add(k);
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(k) && S.fase !== 'inicio') ev.preventDefault();
+    if (S.fase === 'jugando') {
+      if (k === 'ArrowLeft' || k === 'a') { S.carril = Math.max(-1, S.carril - 1); S.carrilPoseAnt = S.carrilPose; }
+      if (k === 'ArrowRight' || k === 'd') { S.carril = Math.min(1, S.carril + 1); S.carrilPoseAnt = S.carrilPose; }
+      if (k === 'ArrowDown' || k === 'g' || k === 'Enter') S.tecMano = 0.5;
+    } else if (S.fase === 'lectura') { if (k === 'Enter') pasarAPregunta(); }
+    else if (S.fase === 'pregunta') {
+      const i = { '1': 0, '2': 1, '3': 2, a: 0, b: 1, c: 2 }[k];
+      if (i !== undefined) elegir(i);
+    } else if (S.fase === 'feedback') { if (k === 'Enter') despuesDeFeedback(); }
+    else if (S.fase === 'final') { if (k === 'Enter') reiniciarTodo(); }
+    if (k === 'p' && S.fase !== 'inicio') { S.pausa = !S.pausa; aviso(S.pausa ? 'Pausa · apretá P para seguir' : '', true); if (S.pausa) $('aviso').classList.remove('oculto'); }
+    if (k === 'm') S.mudo = !S.mudo;
+    if (k === 'c') S.recorte = !S.recorte;
+    if (k === 'f') { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }
+    if (k === 'Escape') { S.pausa = false; ir('inicio'); }
+  });
+  window.addEventListener('keyup', ev => { teclas.delete(ev.key.length === 1 ? ev.key.toLowerCase() : ev.key); });
+
+  // ---------- Arranque ----------
+  function arrancar() {
+    video = $('video');
+    camCanvas = document.createElement('canvas'); camCanvas.width = 640; camCanvas.height = 480; camCtx = camCanvas.getContext('2d');
+
+    if (typeof THREE === 'undefined') {
+      mostrarError('<b>Faltan las bibliotecas del juego.</b><br>Abrí una terminal en esta carpeta y corré <code>npm install</code> (una sola vez, con internet). Eso copia Three.js y MediaPipe dentro de <code>libs/</code> y después el juego funciona sin conexión.');
+      $('btnErrorVolver').classList.add('oculto');
+      return;
+    }
+    try { mundo = crearMundo(THREE, $('escena'), CONFIG, LUGARES); }
+    catch (e) { console.error(e); mostrarError('<b>No se pudo dibujar el mundo 3D.</b> Probá con Google Chrome actualizado y la aceleración por hardware activada. Detalle: ' + e.message); return; }
+    mundo.crearAvatar(camCanvas);
+
+    // puntos de la ruta
+    const barra = $('rutaBarra');
+    LUGARES.forEach((l, i) => { const d = document.createElement('i'); d.className = 'punto'; d.style.left = (mundo.lugarZ(i) / mundo.lugarZ(N - 1) * 100) + '%'; barra.appendChild(d); });
+
+    // pantalla de inicio
+    const hayPose = typeof Pose !== 'undefined';
+    if (!hayPose) {
+      document.querySelectorAll('input[name=modo]').forEach(r => { if (r.value !== 'tec') { r.disabled = true; r.closest('.modo').style.opacity = .5; } });
+      document.querySelector('input[value=tec]').checked = true;
+      $('avisoLibs').classList.remove('oculto');
+    }
+    const refrescarModo = () => document.querySelectorAll('.modo').forEach(m => m.classList.toggle('sel', m.querySelector('input').checked));
+    document.querySelectorAll('input[name=modo]').forEach(r => r.addEventListener('change', refrescarModo)); refrescarModo();
+    $('acepto').addEventListener('change', () => { $('btnEmpezar').disabled = !$('acepto').checked; });
+    $('btnEmpezar').addEventListener('click', empezar);
+    $('btnErrorVolver').addEventListener('click', () => ir('inicio'));
+    $('btnErrorTeclado').addEventListener('click', () => { document.querySelector('input[value=tec]').checked = true; refrescarModo(); empezar(); });
+    $('btnSalir').addEventListener('click', () => { S.pausa = false; ir('inicio'); });
+    document.querySelector('#final details ul').innerHTML = FUENTES.map(f => '<li>' + f + '</li>').join('');
+
+    ir('inicio');
+    S.tPrev = performance.now();
+    requestAnimationFrame(tick);
+    window.__juego = { S, mundo, ir, elegir, pasarAPregunta, iniciarPartida };   // para pruebas del docente
+  }
+  window.arrancarJuego = arrancar;
+})();
+
+</script>
+<script>window.cargarLibrerias(function () { window.arrancarJuego(); });</script>
+</body>
+</html>
